@@ -1,3 +1,4 @@
+import VowelMode from "./pages/VowelMode.vue";
 import RandomMode from "./pages/RandomMode.vue";
 import LeadMode from "./pages/LeadMode.vue";
 import FollowMode from "./pages/FollowMode.vue";
@@ -9,6 +10,11 @@ import { RouteRecordRaw } from "vue-router";
 export const routes: RouteRecordRaw[] = [
   {
     path: "/",
+    name: "音素模式",
+    component: VowelMode,
+  },
+  {
+    path: "/random-mode",
     name: "随机模式",
     component: RandomMode,
   },

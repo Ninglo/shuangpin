@@ -72,7 +72,6 @@ watchPostEffect(() => {
     <div class="main-menu">
       <Menu
         default-show-item
-        enable-arrow
         :index="menuIndex"
         :items="menuItems"
         @menu-change="onMenuChange"
