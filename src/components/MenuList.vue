@@ -98,7 +98,7 @@ onUnmounted(() => {
     }
 
     .selected-item {
-      opacity: 1;
+      opacity: 0.2;
     }
 
     .adj-item {
