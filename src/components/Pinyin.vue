@@ -4,6 +4,7 @@ import { defineProps } from "vue";
 
 const props = defineProps<{
   chars: string[];
+  extraMode?: "SingleChar";
 }>();
 </script>
 
@@ -12,7 +13,7 @@ const props = defineProps<{
     <div v-for="(char, ci) in chars" :key="ci" class="cursor">
       {{ char.toUpperCase() }}
     </div>
-    <div v-if="chars.length === 0" class="cursor" />
+    <div v-if="chars.length === 0 && !extraMode" class="cursor" />
   </div>
 </template>
 

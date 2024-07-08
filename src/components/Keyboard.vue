@@ -10,7 +10,8 @@ const settings = storeToRefs(store).settings;
 
 const props = defineProps<{
   hints?: string[];
-  validSeq?: (_: [string?, string?]) => boolean;
+  validSeq?: (_: [Char?, Char?]) => boolean;
+  mode?: "SingleChar";
 }>();
 
 const pressingKeys = ref(new Set<string>());
@@ -47,7 +48,9 @@ function pressKey(key: string) {
 }
 
 function send() {
-  if (props.validSeq?.([keySeq.value.at(0), keySeq.value.at(1)])) {
+  if (
+    props.validSeq?.([keySeq.value.at(0) as Char, keySeq.value.at(1) as Char])
+  ) {
     keySeq.value = [];
   }
 }
@@ -114,15 +117,14 @@ function keyItemClass(key: string) {
       >
         <div class="main-content">
           <div class="main-key">
-            {{ keyItem.main.toUpperCase() }}
+            {{ keyItem.follow }}
+            <!-- {{ keyItem.main.toUpperCase() }} -->
           </div>
-          <div v-if="keyItem.lead.length > 0" class="lead-key">
-            {{ keyItem.lead }}
-          </div>
+          <div v-if="keyItem.lead.length > 0" class="lead-key"></div>
         </div>
         <div class="bottom-content">
           <div class="follow-key">
-            {{ keyItem.follow }}
+            {{ keyItem.lead }}
           </div>
         </div>
       </div>

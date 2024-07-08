@@ -5,23 +5,33 @@ import Pinyin from "../components/Pinyin.vue";
 import TypeSummary from "../components/TypeSummary.vue";
 import MenuList from "../components/MenuList.vue";
 
-import { onActivated, onDeactivated, ref, watchPostEffect } from "vue";
-import { matchSpToPinyin } from "../utils/keyboard";
+import { onActivated, onDeactivated, ref } from "vue";
+import { lines, matchSpToPinyin, ShuangpinConfig } from "../utils/keyboard";
 import { useStore } from "../store";
 import { computed } from "vue";
 import { getPinyinOf } from "../utils/hanzi";
 import { TypingSummary } from "../utils/summary";
 import { followKeys, leadKeys } from "../utils/pinyin";
-import { randInt, randomChoice } from "../utils/number";
+import { randInt } from "../utils/number";
 
 export interface SingleModeProps {
   nextChar?: () => string;
   hanziList?: string[];
   onValidInput?: (result: boolean) => void;
   mode?: "Lead" | "Follow";
+  extraMode?: "SingleChar";
+  line?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
 }
 
-function nextChar() {
+// eslint-disable-next-line vue/no-dupe-keys
+function nextChar(init?: boolean) {
+  if (props.extraMode === "SingleChar") {
+    const key = props.mode === "Lead" ? "leads" : "follows";
+    const line = init ? lineRef.value : props.line ?? 3;
+    const config = store.mode();
+    return _nextChar(key, line, config);
+  }
+
   if (!props.mode) {
     return props.nextChar?.() ?? "";
   }
@@ -32,10 +42,26 @@ const pinyin = ref<string[]>([]);
 
 const store = useStore();
 const props = defineProps<SingleModeProps>();
-const hanziSeq = ref(new Array(4).fill(0).map(() => nextChar()));
+const bufferNum = 16;
+const hanziSeq = ref(new Array(bufferNum).fill(0).map(() => nextChar()));
 const isValid = ref(false);
+const lineRef = ref(props.line ?? 3);
+const index = ref(0);
 
 const summary = ref(new TypingSummary());
+
+function _nextChar(
+  key: "leads" | "follows",
+  line: 0 | 1 | 2 | 3 | 4 | 5 | 6,
+  config: ShuangpinConfig
+): string {
+  const chars = lines[line].flatMap((chr) => config.groupByKey.get(chr)![key]);
+
+  const index = Math.floor(Math.random() * chars.length);
+  const curt = chars[index];
+
+  return curt;
+}
 
 const keys = {
   Lead: leadKeys,
@@ -53,6 +79,21 @@ const progresses = computed(() =>
 );
 
 const listMenuItems = computed(() => {
+  if (props.extraMode === "SingleChar") {
+    return [
+      "第一行(左)",
+      "第一行(右)",
+      "第二行(左)",
+      "第二行(右)",
+      "第三行(左)",
+      "第三行(右)",
+      "第一行",
+      "第二行",
+      "第三行",
+      "全部",
+    ];
+  }
+
   return progresses.value.map(
     (v) =>
       `${v.key.toUpperCase()} ${(store.getAccuracy(v.key) * 100).toFixed(2)}%`
@@ -60,7 +101,9 @@ const listMenuItems = computed(() => {
 });
 
 const menuIndex = computed(() => {
-  if (props.mode === "Lead") {
+  if (props.extraMode === "SingleChar") {
+    return lineRef.value;
+  } else if (props.mode === "Lead") {
     return store.currentLeadIndex;
   } else if (props.mode === "Follow") {
     return store.currentFollowIndex;
@@ -69,19 +112,38 @@ const menuIndex = computed(() => {
 });
 
 function onMenuChange(i: number) {
-  if (props.mode === "Lead") {
+  if (props.extraMode === "SingleChar") {
+    if (i === lineRef.value) return;
+    setState({
+      index: 0,
+      line: i as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+    });
+    lineRef.value = i as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  } else if (props.mode === "Lead") {
     store.currentLeadIndex = i;
   } else if (props.mode === "Follow") {
     store.currentFollowIndex = i;
   }
 }
 
-watchPostEffect(() => {
-  for (let i = 0; i < 4; ++i) {
-    hanziSeq.value.unshift(nextChar());
-    hanziSeq.value.pop();
+function setState(params: { index: number; line: 0 | 1 | 2 | 3 | 4 | 5 | 6 }) {
+  index.value = params.index;
+  lineRef.value = params.line;
+  const key = props.mode === "Lead" ? "leads" : "follows";
+  hanziSeq.value = new Array(bufferNum)
+    .fill(0)
+    .map(() => _nextChar(key, params.line, store.mode()));
+}
+
+const updateHanziSeq = () => {
+  index.value++;
+  if (index.value >= bufferNum) {
+    setState({
+      index: 0,
+      line: lineRef.value,
+    });
   }
-});
+};
 
 function onKeyPressed() {
   summary.value.onKeyPressed();
@@ -96,7 +158,7 @@ onDeactivated(() => {
 });
 
 const answer = computed(() => {
-  const pys = getPinyinOf(hanziSeq.value.at(-1) ?? "");
+  const pys = getPinyinOf(hanziSeq.value.at(0) ?? "");
   return pys.at(0) ?? "";
 });
 
@@ -104,13 +166,38 @@ const hints = computed(() => {
   return (store.mode().py2sp.get(answer.value) ?? "").split("");
 });
 
-function onSeq([lead, follow]: [string?, string?]) {
+function onSeq([lead, follow]: [Char?, Char?]) {
+  if (props.extraMode === "SingleChar") {
+    const key = props.mode === "Lead" ? "leads" : "follows";
+    const choices = store.mode().groupByKey.get(lead!)?.[key];
+
+    const valid = Boolean(
+      choices?.includes(hanziSeq.value.at(index.value) ?? "")
+    );
+    console.log(
+      lead,
+      choices,
+      hanziSeq.value.at(index.value),
+      hanziSeq.value,
+      valid
+    );
+    isValid.value = valid;
+
+    if (valid) {
+      updateHanziSeq();
+    }
+
+    return true;
+  }
+
   const res = matchSpToPinyin(
     store.mode(),
     lead as Char,
     follow as Char,
     answer.value
   );
+
+  console.log(res);
 
   if (!!lead && !!follow) {
     props.onValidInput?.(res.valid);
@@ -126,25 +213,35 @@ function onSeq([lead, follow]: [string?, string?]) {
 
   isValid.value = res.valid;
 
-  return res.valid;
-}
-
-watchPostEffect(() => {
-  if (isValid.value) {
+  if (res.valid) {
     setTimeout(() => {
-      hanziSeq.value.unshift(nextChar());
-      hanziSeq.value.pop();
+      hanziSeq.value.shift();
+      hanziSeq.value.push(nextChar());
       pinyin.value = [];
       isValid.value = false;
     }, 100);
   }
-});
+
+  return res.valid;
+}
+
+// watchPostEffect(() => {
+//   if (isValid.value) {
+//     setTimeout(() => {
+//       hanziSeq.value.unshift(nextChar());
+//       hanziSeq.value.pop();
+//       pinyin.value = [];
+//       isValid.value = false;
+//     }, 100);
+//   }
+// });
 </script>
 
 <template>
   <div class="home-page">
     <div class="single-menu">
       <menu-list
+        enable-arrow
         :items="listMenuItems"
         :index="menuIndex"
         @menu-change="onMenuChange"
@@ -156,11 +253,11 @@ watchPostEffect(() => {
     </div>
 
     <div class="hanzi-list">
-      <Hanzi :hanzi-seq="[...hanziSeq]" />
+      <Hanzi :hanzi-seq="hanziSeq" :index="index" />
     </div>
 
     <div class="single-keyboard">
-      <Keyboard :valid-seq="onSeq" :hints="hints" />
+      <Keyboard :valid-seq="onSeq" :hints="hints" :mode="extraMode" />
     </div>
 
     <div class="summary">
@@ -213,7 +310,7 @@ watchPostEffect(() => {
   .hanzi-list {
     position: absolute;
     top: var(--app-padding);
-    right: var(--app-padding);
+    left: 200px;
 
     @media (max-width: 576px) {
       top: 120px;
