@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watchPostEffect } from "vue";
+import { computed } from "vue";
 import { storeToRefs } from "pinia";
 import { ref, onActivated, onDeactivated } from "vue";
 import { useStore } from "../store";
@@ -11,6 +11,7 @@ const settings = storeToRefs(store).settings;
 const props = defineProps<{
   hints?: string[];
   validSeq?: (_: [string?, string?]) => boolean;
+  mode?: "singleKey" | "doubleKey";
 }>();
 
 const pressingKeys = ref(new Set<string>());
@@ -52,8 +53,18 @@ function send() {
   }
 }
 
+function sendSingleKey(key: string) {
+  props.validSeq?.([key]);
+  keySeq.value = [];
+}
+
 function releaseKey(key: string, shouldSend = true) {
   pressingKeys.value.delete(key);
+
+  if (props.mode === "singleKey") {
+    sendSingleKey(key);
+    return;
+  }
 
   if (key === "Backspace") {
     keySeq.value.pop();
