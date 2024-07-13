@@ -3,73 +3,70 @@ import { Phoneme } from "../utils/phoneme";
 
 type Props = {
   phonemeSeq: Phoneme[];
+  title?: string;
 };
-defineProps<Props>();
+const { phonemeSeq } = defineProps<Props>();
 </script>
 
 <template>
-  <div class="displayer">
-    <div
-      v-for="(phoneme, i) in phonemeSeq"
-      :key="i"
-      :class="`phoneme-${phoneme.status}`"
-    >
-      {{ phoneme.value }}
+  <div class="phoneme-input-area">
+    <div class="title">{{ title }}</div>
+    <div class="displayer">
+      <span
+        v-for="(phoneme, i) in phonemeSeq"
+        class="phoneme"
+        :class="`${phoneme.status}`"
+        :key="i"
+      >
+        {{ phoneme.displayValue }}
+      </span>
     </div>
   </div>
 </template>
 
 <style lang="less" scoped>
+.title {
+  padding-top: calc(0.5em + 2px);
+  padding-bottom: 0.5em;
+
+  opacity: 0.4;
+  font-size: 14px;
+  font-weight: bold;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
 .displayer {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  position: relative;
+  max-height: 160px;
+  overflow-y: auto;
+  margin-right: 32px;
+  width: 50vw;
 
-  .current-outset {
-    // border: 1px solid var(--black);
-    padding: 5px;
-  }
+  .phoneme {
+    display: inline-block;
 
-  .follow-item {
-    font-size: 36px;
+    padding-right: 8px;
+    font-size: 14px;
     font-weight: bold;
-    margin-right: 10px;
-    margin-top: -1px;
-    position: absolute;
-    right: 0;
-    // transition: all ease 0.3s;
-  }
 
-  .phoneme-unfinished,
-  .phoneme-finished-correct,
-  .phoneme-finished-wrong {
-    opacity: 0.4;
+    &.activate {
+      opacity: 1;
+    }
 
-    padding-right: 12px;
-    padding-bottom: 16px;
-    font-size: 24px;
-    font-weight: bold;
-  }
+    &.finished-correct,
+    &.finished-wrong,
+    &.unfinished {
+      opacity: 0.4;
+    }
 
-  .phoneme-activate,
-  .phoneme-activate-correct,
-  .phoneme-activate-wrong {
-    @size: 54px;
-    height: @size;
-    width: @size;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-
-    padding: 10px;
-    margin-right: 16px;
-    border-radius: 0px;
-
-    font-size: 36px;
-    font-weight: bold;
+    &.finished-correct {
+      color: green;
+    }
+    &.finished-wrong {
+      color: red;
+    }
   }
 }
 </style>

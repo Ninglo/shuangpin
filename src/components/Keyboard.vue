@@ -11,6 +11,7 @@ const settings = storeToRefs(store).settings;
 const props = defineProps<{
   hints?: string[];
   validSeq?: (_: [string?, string?]) => boolean;
+  keyBoardLayout?: string[];
   mode?: "singleKey" | "doubleKey";
 }>();
 
@@ -43,8 +44,6 @@ function resizeKeyboard() {
 
 function pressKey(key: string) {
   pressingKeys.value.add(key);
-
-  navigator.vibrate(100);
 }
 
 function send() {
@@ -62,7 +61,7 @@ function releaseKey(key: string, shouldSend = true) {
   pressingKeys.value.delete(key);
 
   if (props.mode === "singleKey") {
-    sendSingleKey(key);
+    if (shouldSend) sendSingleKey(key);
     return;
   }
 
@@ -91,11 +90,15 @@ function releaseKey(key: string, shouldSend = true) {
 }
 
 const keyLayout = computed(() => {
-  return mapConfigToLayout(store.mode());
+  return mapConfigToLayout(store.mode(), props.keyBoardLayout);
 });
 
 function keyItemClass(key: string) {
   let classNames = [];
+
+  if (!key.trim()) {
+    classNames.push("empty");
+  }
 
   if (pressingKeys.value.has(key)) {
     classNames.push("pressing");

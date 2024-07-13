@@ -4,111 +4,184 @@ import PhonemeComponent from "../components/Phoneme.vue";
 import TypeSummary from "../components/TypeSummary.vue";
 import MenuList from "../components/MenuList.vue";
 
-import { onActivated, onDeactivated, ref } from "vue";
-import { useStore } from "../store";
+import { ref } from "vue";
 import { computed } from "vue";
-import { getPinyinOf } from "../utils/hanzi";
-import { TypingSummary } from "../utils/summary";
+import { useStore } from "../store";
 import type { PhonemeInputStatus, Phoneme } from "../utils/phoneme";
-import { lines } from "../utils/keyPosition";
-import { repeatListTill } from "../utils/list";
-import { ShuangpinConfig } from "../utils/keyboard";
+import {
+  courseChars,
+  courseDisplays,
+  courseNames,
+  courses,
+  courseTitles,
+  keyboardLayoutWithPunctuation,
+  paragraphCourseIndexs,
+} from "../utils/c";
+import "../utils/course";
+import { useRoute, useRouter } from "vue-router";
 
-/**
- * create whole seq -> update display seq ->
- * loop: keyboard tap -> check result -> update display seq
- * -(after the whole seq being finished)-> create new whole seq
- */
-
-type SeqType =
-  | {
-      type: "random";
-      count: number;
-    }
-  | {
-      type: "sequence";
-      count: number;
-    };
-function createWholeSeq(type: SeqType, chars: readonly Char[]): Phoneme[] {
+function createWholeSeq(chars: readonly string[]): Phoneme[] {
+  const isParagraphCourse = paragraphCourseIndexs.includes(menuIndex.value);
+  console.log("isParagraphCourse: ", isParagraphCourse);
   const config = store.mode();
-  const phonemeValues = chars
-    .flatMap((chr) => config.groupByKey.get(chr)?.[mode] ?? "")
-    .filter(Boolean);
-  const repeatedChars = repeatListTill(phonemeValues, type.count);
-  const phonemes = repeatedChars.map<Phoneme>((value, i) => {
+  let nextLead = true;
+  const phonemes = chars.map<Phoneme>((char, i) => {
+    const mode = nextLead ? "leads" : "follows";
     const status: PhonemeInputStatus = i === 0 ? "activate" : "unfinished";
-    return { status, value };
+    const phonemeValues = config.groupByKey.get(char as Char)?.[mode];
+    if (phonemeValues) {
+      nextLead = !nextLead;
+    }
+    const values = phonemeValues ?? [char];
+    const fragmentIndex = Math.floor(i / perFragmentLength);
+    const charIndex = fragmentIndex % values.length;
+    const _index = paragraphCourseIndexs.indexOf(menuIndex.value);
+
+    console.log(_index, charIndex);
+    const displayValue = isParagraphCourse
+      ? courseDisplays[_index][i]
+      : values[charIndex];
+    return { status, displayValue, values, char };
   });
-
-  switch (type.type) {
-    case "sequence":
-      return phonemes;
-    case "random":
-      // TODO random
-      return phonemes;
-  }
-}
-
-function validPhoneme(
-  config: ShuangpinConfig,
-  char: string,
-  phoneme: Phoneme["value"],
-  mode: "leads" | "follows"
-): boolean {
-  const result = config.groupByKey.get(char as Char)?.[mode].includes(phoneme);
-  return Boolean(result);
+  return phonemes;
 }
 
 interface PhonemeProps {
   mode?: "Lead" | "Follow";
-  seqType?: SeqType;
 }
 const store = useStore();
 const props = defineProps<PhonemeProps>();
 const mode = props.mode === "Lead" ? "leads" : "follows";
-const summary = ref(new TypingSummary());
 
-function init(_menuIndex = 0) {
+// courseChars.map((_chars) => {
+//   const chars = _chars[0] + _chars[1];
+//   const res = chars
+//     .split("")
+//     .flatMap((char) => {
+//       const { follows, leads } = store.mode().groupByKey.get(char as Char) ?? {
+//         follows: [],
+//         leads: [],
+//       };
+//       return { follows, leads };
+//     })
+//     .reduce<{ follows: string[]; leads: string[] }>(
+//       (prev, curt) => {
+//         const { follows, leads } = prev;
+//         return {
+//           follows: follows.concat(curt.follows),
+//           leads: leads.concat(curt.leads),
+//         };
+//       },
+//       { follows: [], leads: [] }
+//     );
+//   console.log(
+//     "元音: ",
+//     JSON.stringify(res.follows.filter(Boolean)),
+//     "\n",
+//     "辅音: ",
+//     JSON.stringify(res.leads.filter(Boolean))
+//   );
+// });
+
+const mp = ["course_1_4", "course_2_5", "course_3_3", "course_4_3"];
+const as = courseDisplays
+  .map((cs) => {
+    const as = cs.map((c) => {
+      const { main } = store.mode().groupByFollow.get(c) ??
+        store.mode().groupByLead.get(c) ?? { main: c };
+
+      return main;
+    });
+    return as;
+  })
+  .map((cs, i) => {
+    return `export const ${mp[i]} = ${JSON.stringify(cs)};`;
+  })
+  .join("\n");
+console.log(as);
+
+function init(_menuIndex: number) {
+  router.push({ query: { ...route.query, course: _menuIndex } });
   index.value = 0;
   menuIndex.value = _menuIndex;
-  const type = props.seqType ?? { type: "sequence", count: 16 };
-  const chars = lines[menuIndex.value];
-  wholeSeq.value = createWholeSeq(type, chars);
-  displaySeq.value = wholeSeq.value.slice(0, perFragmentLength);
+  const chars = courses[_menuIndex];
+  phonemeSeq.value = createWholeSeq(chars);
+  summary.value = {
+    inputCharNum: 0,
+    correctCharNum: 0,
+    startTime: Date.now(),
+  };
 }
 
-const perFragmentLength = 8;
+const perFragmentLength = 16;
+const currentMenuChangeKeys = ["PageUp", "PageDown"] as const;
+const mainMenuChangeKeys = [
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+] as const;
+const allMenuChangeKeys = [...currentMenuChangeKeys, mainMenuChangeKeys];
+const route = useRoute();
+const router = useRouter();
 const index = ref(0);
 const menuIndex = ref(0);
-const wholeSeq = ref<Phoneme[]>([]);
-const displaySeq = ref<Phoneme[]>([]);
+const phonemeSeq = ref<Phoneme[]>([]);
+const summary = ref({
+  startTime: Date.now(),
+  inputCharNum: 0,
+  correctCharNum: 0,
+});
+const extraInfos = ref<string[]>([]);
+const summaryResult = computed(() => {
+  const { startTime, inputCharNum, correctCharNum } = summary.value;
+  const now = Date.now();
+  const timeDiffer = now - startTime;
+  const speed = timeDiffer && (inputCharNum / timeDiffer) * 1000 * 60;
+  const accuracy = inputCharNum && correctCharNum / inputCharNum;
+  return {
+    speed,
+    accuracy,
+  };
+});
 
-init();
+console.log(route.query.course);
+init(Number(route.query.course ?? 0));
 
+const passRequire = 0.9;
 function onFinish() {
-  init((menuIndex.value + 1) % listMenuItems.length);
+  const { accuracy } = summaryResult.value;
+  const pass = accuracy >= passRequire;
+  extraInfos.value = pass ? [] : ["失败率过高, 请重新完成课程"];
+  const newMenuIndex = pass
+    ? (menuIndex.value + 1) % courseNames.length
+    : menuIndex.value;
+  init(newMenuIndex);
 }
 
 const resultMap = {
-  // prev0: "finished-wrong",
-  // prev1: "finished-correct",
   curt0: "finished-wrong",
   curt1: "finished-correct",
   next0: "activate",
   next1: "activate",
 } as const satisfies Record<string, PhonemeInputStatus>;
+const punctuationMapper: Record<string, string> = {
+  "；": ";",
+  "。": ".",
+  "，": ",",
+};
 function updatePhonemeStatus(
-  key: string,
+  _key: string,
   index: number,
   type: "curt" | "next"
 ): boolean {
-  if (index < 0 || index >= wholeSeq.value.length) {
+  if (index < 0 || index >= phonemeSeq.value.length) {
     return false;
   }
 
-  const config = store.mode();
-  const phoneme = wholeSeq.value[index];
-  const result = validPhoneme(config, key, phoneme.value, mode);
+  const phoneme = phonemeSeq.value[index];
+  const key = _key in punctuationMapper ? punctuationMapper[_key] : _key;
+  const result = Boolean(key === phoneme.char);
   const status = resultMap[`${type}${Number(result) as 0 | 1}`];
   phoneme.status = status;
 
@@ -116,22 +189,23 @@ function updatePhonemeStatus(
 }
 
 function onSeq([key]: [string?, string?]) {
+  // TODO: support backspace
   if (!key) return false;
 
-  const valid = updateDisplaySeq({ key, index: index.value });
-  if (valid) {
-    summary.value.onValid(valid);
-  }
+  extraInfos.value = [];
+  if (key === "Backspace" || allMenuChangeKeys.includes(key as any))
+    return false;
 
+  const valid = updateSeq({ key, index: index.value });
+  valid && summary.value.correctCharNum++;
+  summary.value.inputCharNum++;
   return valid;
 }
 
-function updateDisplaySeq(option?: { key: string; index: number }): boolean {
+function updateSeq(option?: { key: string; index: number }): boolean {
   let result = false;
   if (option) {
-    // not init
-
-    // TODO: support backspace
+    // non init
     // update current phoneme status
     result = updatePhonemeStatus(option.key, option.index, "curt");
     // update next phoneme status
@@ -139,60 +213,30 @@ function updateDisplaySeq(option?: { key: string; index: number }): boolean {
 
     // update index
     index.value++;
+    document.querySelector(".phoneme.activate")?.scrollIntoView({
+      inline: "nearest",
+      block: "center",
+      behavior: "smooth",
+    });
+
     // check whether finish
-    if (index.value >= wholeSeq.value.length) {
+    if (index.value >= phonemeSeq.value.length) {
       onFinish();
       return false;
     }
   }
 
-  // check display seq slice by index and perFragmentLength
-  const fragmentIndex = Math.floor(index.value / perFragmentLength);
-  const fragment = wholeSeq.value.slice(
-    fragmentIndex * perFragmentLength,
-    (fragmentIndex + 1) * perFragmentLength
-  );
-  // update display seq
-  displaySeq.value = fragment;
-
   return result;
 }
-
-const listMenuItems = [
-  "第一行(左)",
-  "第一行(右)",
-  "第二行(左)",
-  "第二行(右)",
-  "第三行(左)",
-  "第三行(右)",
-  "第一行",
-  "第二行",
-  "第三行",
-  "全部",
-];
 
 function onMenuChange(i: number) {
   if (i === menuIndex.value) return;
   init(i);
 }
 
-function onKeyPressed() {
-  summary.value.onKeyPressed();
-}
-
-onActivated(() => {
-  document.addEventListener("keypress", onKeyPressed);
-});
-
-onDeactivated(() => {
-  document.removeEventListener("keypress", onKeyPressed);
-});
-
-// TODO
 const hints = computed(() => {
-  const pys = getPinyinOf(wholeSeq.value[index.value].value ?? "");
-  const answer = pys.at(0) ?? "";
-  return store.mode().py2sp.get(answer)?.split("");
+  const key = phonemeSeq.value[index.value]?.char ?? "";
+  return [key];
 });
 </script>
 
@@ -201,7 +245,8 @@ const hints = computed(() => {
     <div class="single-menu">
       <menu-list
         enable-arrow
-        :items="listMenuItems"
+        :menu-change-keys="currentMenuChangeKeys"
+        :items="courseNames"
         :index="menuIndex"
         @menu-change="onMenuChange"
       />
@@ -210,18 +255,28 @@ const hints = computed(() => {
     <div class="input-area"></div>
 
     <div class="phoneme-list">
-      <PhonemeComponent :phoneme-seq="displaySeq" />
+      <PhonemeComponent
+        :phoneme-seq="phonemeSeq"
+        :title="courseTitles[menuIndex]"
+      />
     </div>
 
     <div class="single-keyboard">
-      <Keyboard :valid-seq="onSeq" :hints="hints" mode="singleKey" />
+      <Keyboard
+        :valid-seq="onSeq"
+        :hints="hints"
+        mode="singleKey"
+        :key-board-layout="keyboardLayoutWithPunctuation"
+      />
     </div>
 
     <div class="summary">
       <TypeSummary
-        :speed="summary.hanziPerMinutes"
-        :accuracy="summary.accuracy"
-        :avgpress="summary.pressPerHanzi"
+        hide-avgpress
+        :avgpress="0"
+        :extra-infos="extraInfos"
+        :speed="summaryResult.speed"
+        :accuracy="summaryResult.accuracy"
       />
     </div>
   </div>

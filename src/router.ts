@@ -1,8 +1,8 @@
-import KeyPositionPractice from "./pages/KeyPositionPractice.vue";
 import RandomMode from "./pages/RandomMode.vue";
 import LeadMode from "./pages/LeadMode.vue";
 import FollowMode from "./pages/FollowMode.vue";
 import ParagraphMode from "./pages/PragraphMode.vue";
+import KeyPositionPracticeMode from "./pages/KeyPositionPracticeMode.vue";
 import Settings from "./pages/Settings.vue";
 
 import { RouteRecordRaw } from "vue-router";
@@ -31,7 +31,7 @@ export const routes: RouteRecordRaw[] = [
   {
     path: "/position-mode",
     name: "键位练习",
-    component: KeyPositionPractice,
+    component: KeyPositionPracticeMode,
   },
   {
     path: "/settings",

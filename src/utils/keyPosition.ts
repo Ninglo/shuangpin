@@ -1,18 +1,33 @@
-const firstLineLeft = 'qwert'.split('') as Char[];
-const firstLineRight = 'yuiop'.split('') as Char[];
-const secondLineLeft = 'asdfg'.split('') as Char[];
-const secondLineRight = 'hjkl'.split('') as Char[];
-const thirdLineLeft = 'zxcv'.split('') as Char[];
-const thirdLineRight = 'bnm'.split('') as Char[];
 
+const firstLineLeft = "qwert".split("") as Char[];
+const firstLineRight = "yuiop".split("").reverse() as Char[];
+const secondLineLeft = "asdfg".split("") as Char[];
+const secondLineRight = "hjkl".split("").reverse() as Char[];
+const thirdLineLeft = "zxcv".split("") as Char[];
+const thirdLineRight = "bnm".split("").reverse() as Char[];
+
+const firstLine = [...firstLineLeft, ...firstLineRight];
+const secondLine = [...secondLineLeft, ...secondLineRight];
+const thirdLine = [...thirdLineLeft, ...thirdLineRight];
+const total = [
+    ...firstLineLeft,
+    ...firstLineRight,
+    ...secondLineLeft,
+    ...secondLineRight,
+    ...thirdLineLeft,
+    ...thirdLineRight,
+];
 export const lines = [
-    firstLineLeft, firstLineRight,
-    secondLineLeft, secondLineRight,
-    thirdLineLeft, thirdLineRight,
-    [...firstLineLeft, ...firstLineRight],
-    [...secondLineLeft, ...secondLineRight],
-    [...thirdLineLeft, ...thirdLineRight],
-    [...firstLineLeft, ...firstLineRight, ...secondLineLeft, ...secondLineRight, ...thirdLineLeft, ...thirdLineRight]
+    firstLineLeft,
+    firstLineRight,
+    secondLineLeft,
+    secondLineRight,
+    thirdLineLeft,
+    thirdLineRight,
+    firstLine,
+    secondLine,
+    thirdLine,
+    total,
 ] as const;
 
 export const lineNames = [

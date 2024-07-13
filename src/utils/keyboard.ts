@@ -24,7 +24,7 @@ declare global {
 
 export const PresetConfigs = configs;
 
-export function encodeShuangpin() {}
+export function encodeShuangpin() { }
 export class ShuangpinConfig {
   groupByKey = new Map<Char, KeyConfig>(); // 键盘 -> KeyConfig
   groupByFollow = new Map<string, KeyConfig>(); // 声母 -> KeyConfig
@@ -118,8 +118,8 @@ export function mergeString([a, b]: string[] = []) {
   return `(${prefix})${suffix}`;
 }
 
-export function mapConfigToLayout(config: ShuangpinMode) {
-  return keyboardLayout.map((v) =>
+export function mapConfigToLayout(config: ShuangpinMode, layout = keyboardLayout) {
+  return layout.map((v) =>
     v.split("").map((key) => {
       const keyConfig = config.groupByKey.get(key as Char) ?? {
         main: key,

@@ -7,7 +7,9 @@ export type PhonemeInputStatus =
     | "unfinished";
 
 export type Phoneme = {
-    value: string;
+    values: string[]
+    displayValue: string;
+    char: string;
     status: PhonemeInputStatus;
 };
 
