@@ -69,6 +69,7 @@
 
 ## 说明
 - 本项目灵感来源自：[双拼练习](https://github.com/BlueSky-07/Shuang)，感谢作者 [@BlueSky-07](https://github.com/BlueSky-07) 制作的工具帮助我入门双拼；
+- 如对课程设计的原则感兴趣，请见[也许是最好的双拼学习网站](https://zhuanlan.zhihu.com/p/708766527)中我对课程的思考。
 - 如果本项目帮到了你，请将节省的时间用于享受生活，善待自己。
 
 ## LICENSE
